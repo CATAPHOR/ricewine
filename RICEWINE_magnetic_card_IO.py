@@ -36,7 +36,7 @@ class Person:
 
     #given input, assign attributes of person 
     def assign_attributes(self, firstname, surname, university_id, expiry_date):
-        if len(firstname) == 0 or len(surname) == 0 or len(university_id):
+        if len(firstname) == 0 or len(surname) == 0:
             return False
         elif (type(expiry_date) != type([]) or len(expiry_date) != 3 or
                 not all(isinstance(n, int) for n in expiry_date)):
@@ -130,7 +130,7 @@ def new_table():
     sql.execute("CREATE TABLE customers "
                 "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
                 "last_name VARCHAR, first_name VARCHAR, "
-                "university_id VARCHAR, "
+                "university_id VARCHAR DEFAULT NULL, "
                 "expiry DATE, "
                 "times_used INTEGER DEFAULT 0"
                 ");")
