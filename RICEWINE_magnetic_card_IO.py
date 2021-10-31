@@ -71,7 +71,7 @@ def main():
         print("1: Manage database")
         print("2: Verify against database")
         print("Q: Quit application")
-        selection = input("\n").lower()
+        selection = input("\n").lower().strip()
         
         #QUIT
         if selection == "q":
@@ -91,13 +91,16 @@ def main():
                 print("4: Search/edit database entry")
                 print("X: Reset database [DANGER]")
                 print("R: Return to parent menu")
-                selection = input("\n").lower()
+                selection = input("\n").lower().strip()
+
                 #return to previous menu
                 if selection == "r":
                     pass
                 #print all database entries
                 elif selection == "1":
                     print_table()
+                elif selection == "2":
+                    add_to_table_handler()
                 #reset database
                 elif selection == "x":
                     selection = ""
@@ -125,7 +128,6 @@ def main():
             input()
 
 def new_table():
-    #TODO remove existing table
     sql.execute("DROP TABLE IF EXISTS customers;")
     sql.execute("CREATE TABLE customers "
                 "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -139,10 +141,77 @@ def new_table():
     print()
 
 def print_table():
+    print("-" * 10 + "DISPLAYING TABLE" + "-" * 10)
+
+    #show table size
     print()
+    print("[" + str(table_size()[0]) + " ENTRIES]\n")
+
+    #show table columns
+    for column in sql.execute("SELECT name FROM PRAGMA_TABLE_INFO('customers');"):
+        print(column[0], end = "\t\t")
+    print()
+
+    #show table entries
+    for entry in sql.execute("SELECT * FROM customers;"):
+        print(entry[0], end = "\t\t")
+        print(entry[1], end = "\t\t")
+        print(entry[2], end = "\t\t\t")
+        print(entry[3], end = "\t\t")
+        print(entry[4], end = "\t\t")
+        print(entry[5])
+    print()
+
+#TODO implement
+def table_size():
+    sql.execute("SELECT COUNT(*) FROM customers")
+    return sql.fetchone()
+
+def add_to_table(last_name, first_name, university_id):
+    sql.execute("INSERT INTO customers (last_name, first_name, university_id) "
+                "VALUES (?, ?, ?);", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
+    con.commit()
+    print("ADDED " + first_name + " " + last_name + " (ID: " + university_id + ")")
+
+def add_to_table_handler():
+    selection = ""
+    while selection != "r":
+        print("-" * 10 + "ADDING TO TABLE" + "-" * 10)
+        print("1: Add single entry from terminal")
+        print("2: Add multiple entries from file")
+        print("R: Return to parent menu")
+        print()
+        selection = input().lower().strip()
+
+        #inserting a single entry via terminal  
+        if selection == "1":
+            #get data of customer to add
+            first_name, last_name, university_id = "", "", ""
+            print()
+            while first_name == "":
+                first_name = input("First name: ")
+            while last_name == "":
+                last_name = input("Last name: ")
+            university_id = input("University ID (enter blank if none): ")
+
+            selection = ""
+            while selection not in ["y", "n"]:
+                selection = input("\nProceed with operation? Y/N\n").lower().strip()
+            if selection == "y":
+                print()
+                add_to_table(last_name, first_name, university_id)
+                print()
+            else:
+                print("Operation cancelled.\n")
+        elif selection == "2":
+            pass
+    #TODO what if already in table?
+    #TODO confirmation message with table size before and after operation
+    return
 
 if __name__ == "__main__":
     main()
 
 # TODO: handle invalid patterns/vals (ValueError??)
-
+# TODO: new card -> table; table -> card?
+# TODO how to handle expiry date?
