@@ -1,10 +1,16 @@
 import re
 import sqlite3
+import csv
+
+#GUI imports
+import tkinter
 
 #initialise sqlite interface
 con = sqlite3.connect("ricewine.db")
 sql = con.cursor()
 
+#TODO search person in database from card; access entry to edit?
+#TODO add person from card
 #Person class encapsulates database entry
 class Person:
     def __init__(self):
@@ -70,6 +76,7 @@ def main():
         print("Type number to select mode:")
         print("1: Manage database")
         print("2: Verify against database")
+        print("3: Manage card")
         print("Q: Quit application")
         selection = input("\n").lower().strip()
         
@@ -99,9 +106,17 @@ def main():
                 #print all database entries
                 elif selection == "1":
                     print_table()
+                #adds to the table
                 elif selection == "2":
                     add_to_table_handler()
+                #removes from the table
+                elif selection == "3":
+                    remove_from_table_handler()
+                #find table entry and potentially edit
+                elif selection == "4":
+                    search_edit_handler()
                 #reset database
+                #TODO create backup in backup folder
                 elif selection == "x":
                     selection = ""
                     while selection not in ["y", "n"]:
@@ -126,7 +141,14 @@ def main():
                 print("Invalid data!\n")
             selection = ""
             input()
+        
+        #MANAGE CARD
+        elif selection == "3":
+            #read card contents
+            #write to card
+            pass
 
+#refresh database
 def new_table():
     sql.execute("DROP TABLE IF EXISTS customers;")
     sql.execute("CREATE TABLE customers "
@@ -134,12 +156,14 @@ def new_table():
                 "last_name VARCHAR, first_name VARCHAR, "
                 "university_id VARCHAR DEFAULT NULL, "
                 "expiry DATE, "
-                "times_used INTEGER DEFAULT 0"
+                "times_used INTEGER DEFAULT 0, "
+                "UNIQUE(last_name, first_name, university_id) "
                 ");")
     con.commit()
 
     print()
 
+#print table contents
 def print_table():
     print("-" * 10 + "DISPLAYING TABLE" + "-" * 10)
 
@@ -153,6 +177,7 @@ def print_table():
     print()
 
     #show table entries
+    #TODO find a better table solution (tabbing is fucked!)
     for entry in sql.execute("SELECT * FROM customers;"):
         print(entry[0], end = "\t\t")
         print(entry[1], end = "\t\t")
@@ -160,25 +185,31 @@ def print_table():
         print(entry[3], end = "\t\t")
         print(entry[4], end = "\t\t")
         print(entry[5])
-    print()
+    input("\nPress enter to continue...\n")
 
-#TODO implement
+#returns integer of number of elements of table
 def table_size():
     sql.execute("SELECT COUNT(*) FROM customers")
     return sql.fetchone()
 
+#adds a new entry to table, given data of person to add
 def add_to_table(last_name, first_name, university_id):
-    sql.execute("INSERT INTO customers (last_name, first_name, university_id) "
-                "VALUES (?, ?, ?);", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
+    if university_id == "":
+        sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name) "
+                "VALUES (?, ?);", (last_name.upper().strip(), first_name.upper().strip()))
+    else:
+        sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name, university_id) "
+                    "VALUES (?, ?, ?);", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
     con.commit()
     print("ADDED " + first_name + " " + last_name + " (ID: " + university_id + ")")
 
+#handles the adding of new entries to table
 def add_to_table_handler():
     selection = ""
     while selection != "r":
         print("-" * 10 + "ADDING TO TABLE" + "-" * 10)
         print("1: Add single entry from terminal")
-        print("2: Add multiple entries from file")
+        print("2: Add multiple entries from .csv file")
         print("R: Return to parent menu")
         print()
         selection = input().lower().strip()
@@ -194,6 +225,7 @@ def add_to_table_handler():
                 last_name = input("Last name: ")
             university_id = input("University ID (enter blank if none): ")
 
+            #perform addition to table
             selection = ""
             while selection not in ["y", "n"]:
                 selection = input("\nProceed with operation? Y/N\n").lower().strip()
@@ -203,15 +235,52 @@ def add_to_table_handler():
                 print()
             else:
                 print("Operation cancelled.\n")
+        
+        #inserting multiple entries from a csv file
         elif selection == "2":
-            pass
-    #TODO what if already in table?
-    #TODO confirmation message with table size before and after operation
+            filepath = input("\nFile to open (place in same folder as application): ").strip()
+            if len(filepath) > 4 and filepath[-4:] == ".csv":
+                entries_to_add = []
+                try:
+                    with open(filepath, newline = "") as file:
+                        reader = csv.reader(file, quotechar = "\"")
+                        #skip header
+                        next(reader, None)
+
+                        #read data from file
+                        for row in reader:
+                            name = row[0].split(", ")
+                            entries_to_add.append([name[0], name[1], row[1]])
+                        
+                        #add data to table
+                        print()
+                        if len(entries_to_add) > 0:
+                            for entry in entries_to_add:
+                                add_to_table(entry[1], entry[0], entry[2])
+                        else:
+                            print("No data in file!")
+                except:
+                    print("Invalid data or file content format!")
+            else:
+                print("Invalid file or filename!")
+            
+            print()
     return
+
+def remove_from_table():
+    pass
+
+def remove_from_table_handler():
+    pass
+
+def search_edit_handler():
+    pass
 
 if __name__ == "__main__":
     main()
 
 # TODO: handle invalid patterns/vals (ValueError??)
 # TODO: new card -> table; table -> card?
-# TODO how to handle expiry date?
+# TODO: how to handle expiry date?
+# TODO: for editing: get vals and replace into with them
+# TODO: will ken have to write manually? ask him to show the program (write from file etc)
