@@ -95,7 +95,7 @@ def main():
                 print("1: View all entries in database")
                 print("2: Add to database")
                 print("3: Remove from database")
-                print("4: Search/edit database entry")
+                print("4: Search for and/or edit database entry")
                 print("X: Reset database [DANGER]")
                 print("R: Return to parent menu")
                 selection = input("\n").lower().strip()
@@ -117,6 +117,7 @@ def main():
                     search_edit_handler()
                 #reset database
                 #TODO create backup in backup folder
+                #TODO only allow this if password "choomer" entered
                 elif selection == "x":
                     selection = ""
                     while selection not in ["y", "n"]:
@@ -127,6 +128,7 @@ def main():
         #VERIFY AGAINST DATABASE
         elif selection == "2":
             # TODO: handle IO (reader writes to file, or reader outputs as keyboard input?)
+            # TODO: add to times used
             # take input (has to be able to keep taking it until stoppage)
             # display whether valid
             #TESTING
@@ -169,31 +171,31 @@ def print_table():
 
     #show table size
     print()
-    print("[" + str(table_size()[0]) + " ENTRIES]\n")
+    print("[" + str(table_size()) + " ENTRIES]\n")
 
     #show table columns
     for column in sql.execute("SELECT name FROM PRAGMA_TABLE_INFO('customers');"):
-        print(column[0], end = "\t\t")
+        print(column[0], end = "\t")
     print()
 
     #show table entries
     #TODO find a better table solution (tabbing is fucked!)
     for entry in sql.execute("SELECT * FROM customers;"):
-        print(entry[0], end = "\t\t")
-        print(entry[1], end = "\t\t")
-        print(entry[2], end = "\t\t\t")
-        print(entry[3], end = "\t\t")
-        print(entry[4], end = "\t\t")
+        print(entry[0], end = ": ")
+        print(entry[1], end = ", ")
+        print(entry[2], end = ";\t\t")
+        print(entry[3], end = "; ")
+        print(entry[4], end = "; ")
         print(entry[5])
     input("\nPress enter to continue...\n")
 
 #returns integer of number of elements of table
 def table_size():
     sql.execute("SELECT COUNT(*) FROM customers")
-    return sql.fetchone()
+    return sql.fetchone()[0]
 
 #adds a new entry to table, given data of person to add
-def add_to_table(last_name, first_name, university_id):
+def add_to_table(first_name, last_name, university_id):
     if university_id == "":
         sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name) "
                 "VALUES (?, ?);", (last_name.upper().strip(), first_name.upper().strip()))
@@ -208,7 +210,7 @@ def add_to_table_handler():
     selection = ""
     while selection != "r":
         print("-" * 10 + "ADDING TO TABLE" + "-" * 10)
-        print("1: Add single entry from terminal")
+        print("1: Add single entry via terminal")
         print("2: Add multiple entries from .csv file")
         print("R: Return to parent menu")
         print()
@@ -231,12 +233,13 @@ def add_to_table_handler():
                 selection = input("\nProceed with operation? Y/N\n").lower().strip()
             if selection == "y":
                 print()
-                add_to_table(last_name, first_name, university_id)
+                add_to_table(first_name, last_name, university_id)
                 print()
             else:
                 print("Operation cancelled.\n")
         
         #inserting multiple entries from a csv file
+        #TODO why does it insert doubles for people without university ids when inserting from same file???
         elif selection == "2":
             filepath = input("\nFile to open (place in same folder as application): ").strip()
             if len(filepath) > 4 and filepath[-4:] == ".csv":
@@ -250,13 +253,13 @@ def add_to_table_handler():
                         #read data from file
                         for row in reader:
                             name = row[0].split(", ")
-                            entries_to_add.append([name[0], name[1], row[1]])
+                            entries_to_add.append([name[1], name[0], row[1]])
                         
                         #add data to table
                         print()
                         if len(entries_to_add) > 0:
                             for entry in entries_to_add:
-                                add_to_table(entry[1], entry[0], entry[2])
+                                add_to_table(entry[0], entry[1], entry[2])
                         else:
                             print("No data in file!")
                 except:
@@ -267,11 +270,55 @@ def add_to_table_handler():
             print()
     return
 
-def remove_from_table():
-    pass
+def remove_from_table(first_name, last_name, university_id):
+    if university_id == "":
+        sql.execute("DELETE FROM customers "
+                "WHERE last_name = ? AND first_name = ? AND university_id = NULL;", (last_name.upper().strip(), first_name.upper().strip()))
+    else:
+        sql.execute("DELETE FROM customers "
+                    "WHERE last_name = ? AND first_name = ? AND university_id = ?;", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
+    con.commit()
+    print("REMOVED ALL MATCHING ENTRIES FOR \"" + first_name + " " + last_name + "\" (ID: " + university_id + ")")
 
 def remove_from_table_handler():
-    pass
+    selection = ""
+    while selection != "r":
+        print("-" * 10 + "REMOVING FROM TABLE" + "-" * 10)
+        print("1: Remove single entry via terminal")
+        print("R: Return to parent menu")
+        print()
+        selection = input().lower().strip()
+
+        if selection == "1":
+            #get data of customer to remove
+            first_name, last_name, university_id = "", "", ""
+            print()
+            while first_name == "":
+                first_name = input("First name: ").upper().strip()
+            while last_name == "":
+                last_name = input("Last name: ").upper().strip()
+            university_id = input("University ID (enter blank if none): ").upper().strip()
+
+            #check how many entries match
+            sql.execute("SELECT COUNT(*) FROM customers "
+                        "WHERE last_name = ? AND first_name = ? AND university_id = ?;", (last_name, first_name, university_id))
+            num_match = sql.fetchone()[0]
+
+            if num_match == 0:
+                print("No entries found.\n")
+
+            #perform removal from table if entries found
+            else:
+                selection = ""
+                while selection not in ["y", "n"]:
+                    selection = input("\n"+ str(num_match) + " entries found!\nRemove all matching entries from table? Y/N\n").lower().strip()
+                if selection == "y":
+                    print()
+                    remove_from_table(first_name, last_name, university_id)
+                    print()
+                else:
+                    print("Operation cancelled.\n")
+    return
 
 def search_edit_handler():
     pass
