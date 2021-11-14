@@ -117,13 +117,16 @@ def main():
                     search_edit_handler()
                 #reset database
                 #TODO create backup in backup folder
-                #TODO only allow this if password "choomer" entered
                 elif selection == "x":
                     selection = ""
                     while selection not in ["y", "n"]:
                         selection = input("\nAre you sure? This will delete ALL data. Y/N\n").lower()
                     if selection == "y":
-                        new_table()
+                        selection = input("\nEnter admin password: ").lower()
+                        if selection == "choomer":
+                            new_table()
+                        else:
+                            print("Password not recognised.\n")
             
         #VERIFY AGAINST DATABASE
         elif selection == "2":
@@ -163,7 +166,7 @@ def new_table():
                 ");")
     con.commit()
 
-    print()
+    print("Database reset.\n")
 
 #print table contents
 def print_table():
@@ -175,7 +178,7 @@ def print_table():
 
     #show table columns
     for column in sql.execute("SELECT name FROM PRAGMA_TABLE_INFO('customers');"):
-        print(column[0], end = "\t")
+        print(column[0], end = "; ")
     print()
 
     #show table entries
@@ -196,12 +199,8 @@ def table_size():
 
 #adds a new entry to table, given data of person to add
 def add_to_table(first_name, last_name, university_id):
-    if university_id == "":
-        sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name) "
-                "VALUES (?, ?);", (last_name.upper().strip(), first_name.upper().strip()))
-    else:
-        sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name, university_id) "
-                    "VALUES (?, ?, ?);", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
+    sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name, university_id) "
+                "VALUES (?, ?, ?);", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
     con.commit()
     print("ADDED " + first_name + " " + last_name + " (ID: " + university_id + ")")
 
@@ -239,7 +238,6 @@ def add_to_table_handler():
                 print("Operation cancelled.\n")
         
         #inserting multiple entries from a csv file
-        #TODO why does it insert doubles for people without university ids when inserting from same file???
         elif selection == "2":
             filepath = input("\nFile to open (place in same folder as application): ").strip()
             if len(filepath) > 4 and filepath[-4:] == ".csv":
@@ -321,12 +319,11 @@ def remove_from_table_handler():
     return
 
 def search_edit_handler():
-    pass
+    print("Currently unimplemented. For now, use manage database -> view all entries.\n")
 
 if __name__ == "__main__":
     main()
 
-# TODO: handle invalid patterns/vals (ValueError??)
 # TODO: new card -> table; table -> card?
 # TODO: how to handle expiry date?
 # TODO: for editing: get vals and replace into with them
