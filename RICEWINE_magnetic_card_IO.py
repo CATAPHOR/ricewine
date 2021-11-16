@@ -71,7 +71,8 @@ def main():
     
     #MODE SELECTION
     selection = ""
-    while selection not in ["1", "2", "q"]:
+    while selection != "q":
+        selection = ""
         print("-" * 10 + "ROOT MENU" + "-" * 10)
         print("Type number to select mode:")
         print("1: Manage database")
@@ -83,7 +84,6 @@ def main():
         #QUIT
         if selection == "q":
             con.close()
-            selection = ""
             return
         
         #MANAGE DATABASE
@@ -134,18 +134,32 @@ def main():
             # TODO: add to times used
             # take input (has to be able to keep taking it until stoppage)
             # display whether valid
+            
             #TESTING
-            input_text = ("%KEN,YANAGIDA:K1892327?" +
+            test_text = ("%KEN,YANAGIDA:K1892327?" +
                           ";123456789?" +
-                          "+1100001100002000?")
+                          "+1100001100002022?")
+            #%KEN,YANAGIDA:K1892327?;123456789?+1100001100002022?
 
-            testguy = Person()
-            if testguy.read_card(input_text):
-                testguy.output_attributes()
-            else:
-                print("Invalid data!\n")
-            selection = ""
-            input()
+
+            person_to_verify = Person()
+            
+            input_text = ""
+            print("-" * 10 + "VERIFYING CARDS" + "-" * 10)
+            print("Swipe card or type \"QUIT\" to exit verification mode.\n")
+            while input_text != "QUIT":
+                input_text = input().upper()
+                if input_text == "QUIT":
+                    pass
+                else:
+                    if person_to_verify.read_card(input_text):
+                        #TODO
+                        #perform lookup, output all attributes of TABLE, add to num of times scanned
+                        #if found but expiry date is past today's date, give warning; search for latest date for multiple
+                        #if not found then say not found/invalid :)
+                        person_to_verify.output_attributes()
+                    else:
+                        print("INVALID DATA\n")
         
         #MANAGE CARD
         elif selection == "3":
@@ -325,6 +339,6 @@ if __name__ == "__main__":
     main()
 
 # TODO: new card -> table; table -> card?
-# TODO: how to handle expiry date?
+# TODO: how to handle expiry date? maybe update it to whatever is scanned in on the card; assuming manual entry
 # TODO: for editing: get vals and replace into with them
 # TODO: will ken have to write manually? ask him to show the program (write from file etc)
