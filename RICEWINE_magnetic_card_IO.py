@@ -1,17 +1,16 @@
 import re
 import sqlite3
 import csv
+import datetime
 
 #GUI imports
 import tkinter
 
 #initialise sqlite interface
-con = sqlite3.connect("ricewine.db")
+con = sqlite3.connect("ricewine.db", detect_types = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
 sql = con.cursor()
 
-#TODO search person in database from card; access entry to edit?
-#TODO add person from card
-#Person class encapsulates database entry
+#class handles/encapsulates card and card-database interactions
 class Person:
     def __init__(self):
         self.firstname = ""
@@ -40,6 +39,7 @@ class Person:
             self.expiry_date = list(map(lambda a: int(a), input_tracks[2][1:].split("0000")))
             return True
 
+    #TODO need this? or delete? maybe useful for updating a person...
     #given input, assign attributes of person 
     def assign_attributes(self, firstname, surname, university_id, expiry_date):
         if len(firstname) == 0 or len(surname) == 0:
@@ -53,6 +53,62 @@ class Person:
             self.university_id = university_id
             self.expiry_date = expiry_date
             return True
+
+    #verification lookup, searches database for customer and updates database accordingly, returns validity
+    def lookup(self):
+        warning = ""
+
+        #find customer in database
+        sql.execute("SELECT * FROM customers WHERE id = ?;", (self.rw_unique_id,))
+        dbquery = list(sql.fetchone())
+        #if not valid, end function
+        if dbquery == None:
+            print("Entry not found! RiceWine ID (card Track #2) does not match records.")
+            return "INVALID"
+
+        else:
+            #check whether full name for ricewine id matches database entry
+            if dbquery[1] != self.surname or dbquery[2] != self.firstname:
+                print("\"" + self.firstname + " " + self.surname +"\" does not match [ ID #" + 
+                str(self.rw_unique_id) + ": " + dbquery[2] + " " + dbquery[1] + " ]")
+            #check whether university id for ricewine id matches database entry
+            elif dbquery[3] != self.university_id:
+                print("University ID mismatch: " + self.university_id + " does not match [ ID #" + 
+                str(self.rw_unique_id) + ": " + dbquery[3] + " ]")
+            else:
+                #make expiry date into datetime object
+                datetime_expiry_date = datetime.date(self.expiry_date[2], 
+                    self.expiry_date[1], self.expiry_date[0])
+
+                #update database's date for entry if card date clearly supercedes
+                if dbquery[4] == None or dbquery[4] < datetime_expiry_date:
+                    sql.execute("UPDATE customers SET expiry = ? WHERE id = ?;", 
+                        (datetime_expiry_date, self.rw_unique_id))
+                    con.commit()
+                    dbquery[4] = datetime_expiry_date
+                    print("Database expiry date updated to match card's date: " + 
+                        datetime_expiry_date.isoformat() + ".")
+
+                #if database has a date further ahead than the card it must be outdated and so invalid
+                if dbquery[4] > datetime_expiry_date:
+                    print("Card expiry date (" + datetime_expiry_date.isoformat() + ") outdated,"
+                        + " precedes expiry date on record (" + dbquery[4].isoformat() + ").")
+                else:
+                    #check if date valid (i.e. after today)
+                    if datetime_expiry_date >= datetime.date.today():
+                        #increment number of times scanned on database
+                        times_used = dbquery[5]
+                        sql.execute("UPDATE customers SET times_used = ? WHERE id = ?;", 
+                            (times_used + 1, self.rw_unique_id))
+                        con.commit()
+                        print("Number of times used: " + str(times_used + 1))
+                    else:
+                        warning = " [WARNING: CARD EXPIRED; RENEW!]"
+                    #reaching end of this else block indicates validity; return as such (+ any warning)
+                    return "VALID" + warning + "\n"
+
+        #control flow ensures reaching here means card contents invalid in some way
+        return "INVALID\n"
 
     #print attributes (testing)
     def output_attributes(self):
@@ -77,7 +133,7 @@ def main():
         print("Type number to select mode:")
         print("1: Manage database")
         print("2: Verify against database")
-        print("3: Manage card")
+        print("3: Write new card")
         print("Q: Quit application")
         selection = input("\n").lower().strip()
         
@@ -130,44 +186,65 @@ def main():
             
         #VERIFY AGAINST DATABASE
         elif selection == "2":
-            # TODO: handle IO (reader writes to file, or reader outputs as keyboard input?)
-            # TODO: add to times used
-            # take input (has to be able to keep taking it until stoppage)
-            # display whether valid
-            
             #TESTING
             test_text = ("%KEN,YANAGIDA:K1892327?" +
-                          ";123456789?" +
+                          ";116?" +
                           "+1100001100002022?")
-            #%KEN,YANAGIDA:K1892327?;123456789?+1100001100002022?
+            #%KEN,YANAGIDA:K1892327?;116?+1100001100002022?
+            #%KEN,YANAGIDA:K1892327?;116?+1100001100002021?
 
-
+            #create object to store card data
             person_to_verify = Person()
-            
             input_text = ""
             print("-" * 10 + "VERIFYING CARDS" + "-" * 10)
             print("Swipe card or type \"QUIT\" to exit verification mode.\n")
             while input_text != "QUIT":
+                #get card tracks as one line from stdin
                 input_text = input().upper()
                 if input_text == "QUIT":
                     pass
                 else:
                     if person_to_verify.read_card(input_text):
-                        #TODO
-                        #perform lookup, output all attributes of TABLE, add to num of times scanned
-                        #if found but expiry date is past today's date, give warning; search for latest date for multiple
-                        #if not found then say not found/invalid :)
-                        person_to_verify.output_attributes()
+                        print(person_to_verify.lookup())
                     else:
-                        print("INVALID DATA\n")
+                        print("CARD DATA INVALID\n")
         
-        #MANAGE CARD
+        #WRITE NEW CARD
         elif selection == "3":
-            #read card contents
-            #write to card
-            pass
+            print("-" * 10 + "NEW CARD" + "-" * 10)
+            print("Prints formatted track contents to input directly on MagCard software.")
+            print("You must create a database entry for the individual FIRST before creating a card for them.\n")
+            try:
+                #get data of customer to write card for
+                first_name = input("First name: ").upper().strip()
+                if len(first_name) == 0:
+                    raise Exception()
+                surname = input("Surname: ").upper().strip()
+                if len(surname) == 0:
+                    raise Exception()
+                university_id = input("University ID (enter blank if none): ").upper().strip()
+                #TODO grab this from the database instead!
+                #TODO if search returns no results, then add new entry to database
+                ricewine_id = input("RiceWine ID (MUST match database!): ").upper().strip()
+                if len(ricewine_id) == 0 or not(ricewine_id.isnumeric()):
+                    raise Exception()
+                date = datetime.date.fromisoformat(input("Expiry Date (Format: YYYY-MM-DD): "))
+
+                #output card data, formatted (must be input manually on external software)
+                print("\nEnter these into the corresponding fields on MagCard:\n")
+                print("Track 1:")
+                print(first_name + "," + surname + ":" + university_id)
+                print("Track 2:")
+                print(ricewine_id)
+                print("Track 3:")
+                print(str(date.day) + "0000" + str(date.month) + "0000" + str(date.year))
+
+                input("\nPress enter to continue...\n")
+            except:
+                print("Invalid data. Operation cancelled.\n")
 
 #refresh database
+#TODO back the table up somewhere (backup folder?)
 def new_table():
     sql.execute("DROP TABLE IF EXISTS customers;")
     sql.execute("CREATE TABLE customers "
@@ -196,7 +273,7 @@ def print_table():
     print()
 
     #show table entries
-    #TODO find a better table solution (tabbing is fucked!)
+    #TODO find a better table solution (tabbing is ugly!)
     for entry in sql.execute("SELECT * FROM customers;"):
         print(entry[0], end = ": ")
         print(entry[1], end = ", ")
@@ -225,6 +302,7 @@ def add_to_table_handler():
         print("-" * 10 + "ADDING TO TABLE" + "-" * 10)
         print("1: Add single entry via terminal")
         print("2: Add multiple entries from .csv file")
+        #TODO add person from card!
         print("R: Return to parent menu")
         print()
         selection = input().lower().strip()
@@ -253,7 +331,8 @@ def add_to_table_handler():
         
         #inserting multiple entries from a csv file
         elif selection == "2":
-            filepath = input("\nFile to open (place in same folder as application): ").strip()
+            print("\nAccepts only .csv files with 2 fields: one for full name (\"surname,firstname\"), and one for University ID (blank if none).")
+            filepath = input("File to open (place in same folder as application): ").strip()
             if len(filepath) > 4 and filepath[-4:] == ".csv":
                 entries_to_add = []
                 try:
@@ -334,11 +413,13 @@ def remove_from_table_handler():
 
 def search_edit_handler():
     print("Currently unimplemented. For now, use manage database -> view all entries.\n")
+    # "leave blank if don't want to search term"
+    # then build up search string with AND in between, and tuple to pass through
+    # check if 1 result, if so then ask edit? y/n or maybe have edit/search mode at beginning
 
 if __name__ == "__main__":
     main()
 
 # TODO: new card -> table; table -> card?
-# TODO: how to handle expiry date? maybe update it to whatever is scanned in on the card; assuming manual entry
 # TODO: for editing: get vals and replace into with them
 # TODO: will ken have to write manually? ask him to show the program (write from file etc)
