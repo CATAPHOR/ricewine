@@ -60,13 +60,15 @@ class Person:
 
         #find customer in database
         sql.execute("SELECT * FROM customers WHERE id = ?;", (self.rw_unique_id,))
-        dbquery = list(sql.fetchone())
+        dbquery = sql.fetchone()
         #if not valid, end function
         if dbquery == None:
             print("Entry not found! RiceWine ID (card Track #2) does not match records.")
-            return "INVALID"
+            return "INVALID\n"
 
         else:
+            dbquery = list(dbquery)
+
             #check whether full name for ricewine id matches database entry
             if dbquery[1] != self.surname or dbquery[2] != self.firstname:
                 print("\"" + self.firstname + " " + self.surname +"\" does not match [ ID #" + 
@@ -192,6 +194,7 @@ def main():
                           "+1100001100002022?")
             #%KEN,YANAGIDA:K1892327?;116?+1100001100002022?
             #%KEN,YANAGIDA:K1892327?;116?+1100001100002021?
+            #%KEN,YANAGIDA:K1892327?;123456789?+1100001100001999?
 
             #create object to store card data
             person_to_verify = Person()
