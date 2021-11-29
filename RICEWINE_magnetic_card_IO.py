@@ -293,10 +293,12 @@ def table_size():
 
 #adds a new entry to table, given data of person to add
 def add_to_table(first_name, last_name, university_id):
+    presize = table_size()
     sql.execute("INSERT OR IGNORE INTO customers (last_name, first_name, university_id) "
                 "VALUES (?, ?, ?);", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
     con.commit()
-    print("ADDED " + first_name + " " + last_name + " (ID: " + university_id + ")")
+    if table_size() > presize:
+        print("ADDED " + first_name + " " + last_name + " (ID: " + university_id + ")")
 
 #handles the adding of new entries to table
 def add_to_table_handler():
@@ -426,3 +428,4 @@ if __name__ == "__main__":
 # TODO: new card -> table; table -> card?
 # TODO: for editing: get vals and replace into with them
 # TODO: will ken have to write manually? ask him to show the program (write from file etc)
+# TODO: manual backup?
