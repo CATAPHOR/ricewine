@@ -200,7 +200,7 @@ def main():
                           "+1100001100002022?")
             #%KEN,YANAGIDA:K1892327?;116?+1100001100002022?
             #%KEN,YANAGIDA:K1892327?;116?+1100001100002021?
-            #%KEN,YANAGIDA:K1892327?;123456789?+1100001100001999?
+            #%ADAM,GAFAR:?;128?+1100001100002021?
 
             #create object to store card data
             person_to_verify = Person()
@@ -223,34 +223,7 @@ def main():
             print("-" * 10 + "NEW CARD" + "-" * 10)
             print("Prints formatted track contents to input directly on MagCard software.")
             print("You must create a database entry for the individual FIRST before creating a card for them.\n")
-            try:
-                #get data of customer to write card for
-                first_name = input("First name: ").upper().strip()
-                if len(first_name) == 0:
-                    raise Exception()
-                surname = input("Surname: ").upper().strip()
-                if len(surname) == 0:
-                    raise Exception()
-                university_id = input("University ID (enter blank if none): ").upper().strip()
-                #TODO grab this from the database instead!
-                #TODO if search returns no results, then add new entry to database
-                ricewine_id = input("RiceWine ID (MUST match database!): ").upper().strip()
-                if len(ricewine_id) == 0 or not(ricewine_id.isnumeric()):
-                    raise Exception()
-                date = datetime.date.fromisoformat(input("Expiry Date (Format: YYYY-MM-DD): "))
-
-                #output card data, formatted (must be input manually on external software)
-                print("\nEnter these into the corresponding fields on MagCard:\n")
-                print("Track 1:")
-                print(first_name + "," + surname + ":" + university_id)
-                print("Track 2:")
-                print(ricewine_id)
-                print("Track 3:")
-                print(str(date.day) + "0000" + str(date.month) + "0000" + str(date.year))
-
-                input("\nPress enter to continue...\n")
-            except:
-                print("Invalid data. Operation cancelled.\n")
+            new_card_format_handler()
 
 #refresh database
 #TODO back the table up somewhere (backup folder?)
@@ -423,6 +396,69 @@ def search_edit_handler():
     # "leave blank if don't want to search term"
     # then build up search string with AND in between, and tuple to pass through
     # check if 1 result, if so then ask edit? y/n or maybe have edit/search mode at beginning
+
+#given data, outputs how a new card would be written using MagCard software
+def new_card_format_print(first_name, surname, university_id, ricewine_id, date):
+    #output card data, formatted (must be input manually on external software)
+    print()
+    print("-" * 10 + "FORMAT FOR WRITING TO CARD" + "-" * 10)
+    print("Enter these into the corresponding fields on MagCard:\n")
+    print("[ Track 1 ]")
+    print(first_name + "," + surname + ":" + university_id)
+    print("[ Track 2 ]")
+    print(str(ricewine_id))
+    print("[ Track 3 ]")
+    print(str(date.day) + "0000" + str(date.month) + "0000" + str(date.year))
+
+#handles user interaction in the scenario of writing new cards for individuals in records
+def new_card_format_handler():
+    try:
+        #get data of customer to write card for
+        first_name = input("First name: ").upper().strip()
+        if len(first_name) == 0:
+            raise Exception()
+        surname = input("Surname: ").upper().strip()
+        if len(surname) == 0:
+            raise Exception()
+        university_id = input("University ID (enter blank if none): ").upper().strip()
+        #TODO grab this from the database instead!
+        #TODO if search returns no results, then add new entry to database
+        
+        ricewine_id = -1
+        selection = ""
+        while selection not in ["y", "n"]:
+            selection = input("\nRetrieve RiceWine ID automatically? Y/N\n").lower().strip()
+        
+        if selection == "y":
+            #find number of matches; proceed if only one found
+            sql.execute("SELECT COUNT(*) FROM customers "
+                            "WHERE last_name = ? AND first_name = ? AND university_id = ?;", (surname, first_name, university_id))
+            num_match = sql.fetchone()[0]
+
+            if num_match == 0:
+                print("\nNo matches found in records.")
+            elif num_match > 1:
+                print("\nMultiple matches found. Please list all entries and find the correct individual.")
+            else:
+                sql.execute("SELECT id FROM customers "
+                    "WHERE last_name = ? AND first_name = ? AND university_id = ?;", (surname, first_name, university_id))
+                ricewine_id = sql.fetchone()[0]
+                print("\n" + first_name + " " + surname + "'S ID found: [" + str(ricewine_id) + "].\n")
+        else:
+            ricewine_id = input("\nRiceWine ID (MUST match database!): ").upper().strip()
+            if len(ricewine_id) == 0 or not(ricewine_id.isnumeric()):
+                ricewine_id = -1
+        
+        if ricewine_id != -1:
+            date = datetime.date.fromisoformat(input("Expiry Date (Format: YYYY-MM-DD): "))
+
+            new_card_format_print(first_name, surname, university_id, ricewine_id, date)
+
+            input("\nPress enter to continue...\n")
+        else:
+            print("\nID could not be found. Operation cancelled.\n")
+    except:
+        print("\nInvalid data. Operation cancelled.\n")
 
 if __name__ == "__main__":
     main()
