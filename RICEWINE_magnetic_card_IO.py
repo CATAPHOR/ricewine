@@ -373,12 +373,8 @@ def add_to_table_handler():
     return
 
 def remove_from_table(first_name, last_name, university_id):
-    if university_id == "":
-        sql.execute("DELETE FROM customers "
-                "WHERE last_name = ? AND first_name = ? AND university_id = NULL;", (last_name.upper().strip(), first_name.upper().strip()))
-    else:
-        sql.execute("DELETE FROM customers "
-                    "WHERE last_name = ? AND first_name = ? AND university_id = ?;", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
+    sql.execute("DELETE FROM customers "
+        "WHERE last_name = ? AND first_name = ? AND university_id = ?;", (last_name.upper().strip(), first_name.upper().strip(), university_id.upper().strip()))
     con.commit()
     print("REMOVED ALL MATCHING ENTRIES FOR \"" + first_name + " " + last_name + "\" (ID: " + university_id + ")")
 
