@@ -127,6 +127,12 @@ def main():
     print("Rice Wine Shop")
     print("Special Offer Card Verification\n")
     
+    #initialise table if doesn't exist:
+    try:
+        table_size()
+    except:
+        new_table()
+    
     #MODE SELECTION
     selection = ""
     while selection != "q":
