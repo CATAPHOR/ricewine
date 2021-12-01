@@ -55,7 +55,7 @@ class Person:
             return True
 
     #verification lookup, searches database for customer and updates database accordingly, returns validity
-    def lookup(self):
+    def lookup(self, test_mode):
         warning = ""
 
         #find customer in database
@@ -84,12 +84,17 @@ class Person:
 
                 #update database's date for entry if card date clearly supercedes
                 if dbquery[4] == None or dbquery[4] < datetime_expiry_date:
-                    sql.execute("UPDATE customers SET expiry = ? WHERE id = ?;", 
-                        (datetime_expiry_date, self.rw_unique_id))
-                    con.commit()
+                    if test_mode:
+                        print("Database expiry date WOULD BE updated to match card's date: " + 
+                            datetime_expiry_date.isoformat() + ".")
+                    else:
+                        sql.execute("UPDATE customers SET expiry = ? WHERE id = ?;", 
+                            (datetime_expiry_date, self.rw_unique_id))
+                        con.commit()
+                        print("Database expiry date updated to match card's date: " + 
+                            datetime_expiry_date.isoformat() + ".")
+
                     dbquery[4] = datetime_expiry_date
-                    print("Database expiry date updated to match card's date: " + 
-                        datetime_expiry_date.isoformat() + ".")
 
                 #if database has a date further ahead than the card it must be outdated and so invalid
                 if dbquery[4] > datetime_expiry_date:
@@ -97,15 +102,19 @@ class Person:
                         + " precedes expiry date on record (" + dbquery[4].isoformat() + ").")
                 else:
                     #check if date valid (i.e. after today)
-                    if datetime_expiry_date >= datetime.date.today():
+                    if datetime_expiry_date < datetime.date.today():
+                        warning = " [WARNING: CARD EXPIRED; RENEW!]"
+
+                    times_used = dbquery[5]
+                    if test_mode:
+                        print("Number of times used (STATIC): " + str(times_used))
+                    else:
                         #increment number of times scanned on database
-                        times_used = dbquery[5]
                         sql.execute("UPDATE customers SET times_used = ? WHERE id = ?;", 
                             (times_used + 1, self.rw_unique_id))
                         con.commit()
                         print("Number of times used: " + str(times_used + 1))
-                    else:
-                        warning = " [WARNING: CARD EXPIRED; RENEW!]"
+
                     #reaching end of this else block indicates validity; return as such (+ any warning)
                     return "VALID" + warning + "\n"
 
@@ -141,7 +150,7 @@ def main():
         print("Type number to select mode:")
         print("1: Manage database")
         print("2: Verify against database")
-        print("3: Write new card")
+        print("3: Manage cards")
         print("Q: Quit application")
         selection = input("\n").lower().strip()
         
@@ -198,7 +207,7 @@ def main():
             test_text = ("%KEN,YANAGIDA:K1892327?" +
                           ";116?" +
                           "+1100001100002022?")
-            #%KEN,YANAGIDA:K1892327?;116?+1100001100002022?
+            #%KEN,YANAGIDA:K1892327?;116?+1100001100002023?
             #%KEN,YANAGIDA:K1892327?;116?+1100001100002021?
             #%ADAM,GAFAR:?;128?+1100001100002021?
 
@@ -206,24 +215,19 @@ def main():
             person_to_verify = Person()
             input_text = ""
             print("-" * 10 + "VERIFYING CARDS" + "-" * 10)
-            print("Swipe card or type \"QUIT\" to exit verification mode.\n")
+            print("Swipe card, or type \"QUIT\" to exit verification mode.\n")
             while input_text != "QUIT":
                 #get card tracks as one line from stdin
                 input_text = input().upper()
-                if input_text == "QUIT":
-                    pass
-                else:
+                if input_text != "QUIT":
                     if person_to_verify.read_card(input_text):
-                        print(person_to_verify.lookup())
+                        print(person_to_verify.lookup(False))
                     else:
                         print("CARD DATA INVALID\n")
         
         #WRITE NEW CARD
         elif selection == "3":
-            print("-" * 10 + "NEW CARD" + "-" * 10)
-            print("Prints formatted track contents to input directly on MagCard software.")
-            print("You must create a database entry for the individual FIRST before creating a card for them.\n")
-            new_card_format_handler()
+            manage_card_handler()
 
 #refresh database
 #TODO back the table up somewhere (backup folder?)
@@ -397,6 +401,39 @@ def search_edit_handler():
     # then build up search string with AND in between, and tuple to pass through
     # check if 1 result, if so then ask edit? y/n or maybe have edit/search mode at beginning
 
+#menu for accessing various specifically card-related functions
+def manage_card_handler():
+    selection = ""
+    while selection != "r":
+        print("-" * 10 + "MANAGING CARDS" + "-" * 10)
+        print("1: Test card validation")
+        print("2: Write new card")
+        print("R: Return to parent menu")
+        print()
+        selection = input().lower().strip()
+
+        #test the validation of a specific card
+        if selection == "1":
+            print("-" * 10 + "TEST MODE" + "-" * 10)
+            test_person = Person()
+
+            input_text = ""
+            print("In this mode, cards are verified without updating the database.")
+            print("Swipe card, or type \"QUIT\" to exit test mode.\n")
+            while input_text != "QUIT":
+                #get card tracks as one line from stdin
+                input_text = input().upper()
+                if input_text != "QUIT":
+                    if test_person.read_card(input_text):
+                        print(test_person.lookup(True))
+                    else:
+                        print("CARD DATA INVALID\n")
+        
+        #print format for writing to new card
+        elif selection == "2":
+            new_card_format_handler()
+
+
 #given data, outputs how a new card would be written using MagCard software
 def new_card_format_print(first_name, surname, university_id, ricewine_id, date):
     #output card data, formatted (must be input manually on external software)
@@ -412,6 +449,9 @@ def new_card_format_print(first_name, surname, university_id, ricewine_id, date)
 
 #handles user interaction in the scenario of writing new cards for individuals in records
 def new_card_format_handler():
+    print("-" * 10 + "NEW CARD" + "-" * 10)
+    print("Prints formatted track contents to input directly on MagCard software.")
+    print("You must create a database entry for the individual FIRST before creating a card for them.\n")
     try:
         #get data of customer to write card for
         first_name = input("First name: ").upper().strip()
