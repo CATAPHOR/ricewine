@@ -23,7 +23,7 @@ class Person:
     def read_card(self, input_text):
         #verify validity with regex
         #"99" used as buffer to ensure track 2 is read by card reader
-        regex_pattern = ("%[a-zA-Z]+,[a-zA-Z]+:[0-9a-zA-Z]*\?" +
+        regex_pattern = ("%.+,.+:[0-9a-zA-Z]*\?" +
                          ";99[0-9]+\?" +
                          "\+[0-9]{2}0000[0-9]{2}0000[0-9]{4}\?")
         valid = re.match(regex_pattern, input_text)                 
