@@ -22,8 +22,9 @@ class Person:
     #read from card to populate data of person
     def read_card(self, input_text):
         #verify validity with regex
+        #"99" used as buffer to ensure track 2 is read by card reader
         regex_pattern = ("%[a-zA-Z]+,[a-zA-Z]+:[0-9a-zA-Z]*\?" +
-                         ";[0-9]+\?" +
+                         ";99[0-9]+\?" +
                          "\+[0-9]{2}0000[0-9]{2}0000[0-9]{4}\?")
         valid = re.match(regex_pattern, input_text)                 
         
@@ -35,7 +36,7 @@ class Person:
             #populate variables with data from tracks
             self.firstname, self.surname = input_tracks[0][1:].split(":")[0].split(",")
             self.university_id = input_tracks[0].split(":")[1]
-            self.rw_unique_id = int(input_tracks[1][1:])
+            self.rw_unique_id = int(input_tracks[1][3:])
             self.expiry_date = list(map(lambda a: int(a), input_tracks[2][1:].split("0000")))
             return True
 
@@ -443,7 +444,7 @@ def new_card_format_print(first_name, surname, university_id, ricewine_id, date)
     print("[ Track 1 ]")
     print(first_name + "," + surname + ":" + university_id)
     print("[ Track 2 ]")
-    print(str(ricewine_id))
+    print("99" + str(ricewine_id))
     print("[ Track 3 ]")
     print("{:02d}".format(date.day) + "0000" + "{:02d}".format(date.month) + "0000" + str(date.year))
 
