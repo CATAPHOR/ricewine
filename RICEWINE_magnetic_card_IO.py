@@ -445,7 +445,7 @@ def new_card_format_print(first_name, surname, university_id, ricewine_id, date)
     print("[ Track 2 ]")
     print(str(ricewine_id))
     print("[ Track 3 ]")
-    print(str(date.day) + "0000" + str(date.month) + "0000" + str(date.year))
+    print("{:02d}".format(date.day) + "0000" + "{:02d}".format(date.month) + "0000" + str(date.year))
 
 #handles user interaction in the scenario of writing new cards for individuals in records
 def new_card_format_handler():
