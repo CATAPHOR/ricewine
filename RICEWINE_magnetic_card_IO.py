@@ -2,6 +2,7 @@ import re
 import sqlite3
 import csv
 import datetime
+import sys
 
 #GUI imports
 import tkinter
@@ -213,22 +214,26 @@ def main():
             #%ADAM,GAFAR:?;128?+1100001100002021?
 
             #create object to store card data
-            person_to_verify = Person()
-            input_text = ""
-            print("-" * 10 + "VERIFYING CARDS" + "-" * 10)
-            print("Swipe card, or type \"QUIT\" to exit verification mode.\n")
-            while input_text != "QUIT":
-                #get card tracks as one line from stdin
-                input_text = input().upper()
-                if input_text != "QUIT":
-                    if person_to_verify.read_card(input_text):
-                        print(person_to_verify.lookup(False))
-                    else:
-                        print("CARD DATA INVALID\n")
+            verify_against_db()
         
         #WRITE NEW CARD
         elif selection == "3":
             manage_card_handler()
+
+def verify_against_db():
+    #create object to store card data
+    person_to_verify = Person()
+    input_text = ""
+    print("-" * 10 + "VERIFYING CARDS" + "-" * 10)
+    print("Swipe card, or type \"QUIT\" to exit verification mode.\n")
+    while input_text != "QUIT":
+        #get card tracks as one line from stdin
+        input_text = input().upper()
+        if input_text != "QUIT":
+            if person_to_verify.read_card(input_text):
+                print(person_to_verify.lookup(False))
+            else:
+                print("CARD DATA INVALID\n")
 
 #refresh database
 #TODO back the table up somewhere (backup folder?)
@@ -502,7 +507,16 @@ def new_card_format_handler():
         print("\nInvalid data. Operation cancelled.\n")
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 1:
+        main()
+    elif len(sys.argv) == 2 and sys.argv[1] == "-v":
+        print("Rice Wine Shop")
+        print("Special Offer Card Verification")
+        print("[VERIFICATION ONLY MODE]")
+        print()
+        verify_against_db()
+    else:
+        print("Argument error.")
 
 # TODO: new card -> table; table -> card?
 # TODO: for editing: get vals and replace into with them
